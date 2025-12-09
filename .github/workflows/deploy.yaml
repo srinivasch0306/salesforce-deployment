@@ -49,12 +49,12 @@ jobs:
       # 6️⃣ Authenticate using JWT
       - name: Authenticate to Salesforce (JWT)
         run: |
-          echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
+          printf "%s" "${{ secrets.JWT_SERVER_KEY }}" > server.key
           sf org login jwt \
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
             --jwt-key-file server.key \
             --client-id ${{ secrets.CONSUMER_KEY }} \
-            --instance-url ${{ vars.INSTANCE_URL }} \
+            --instance-url https://login.salesforce.com \
             --alias deployOrg \
             --set-default
 
