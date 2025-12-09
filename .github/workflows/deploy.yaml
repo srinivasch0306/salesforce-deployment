@@ -1,0 +1,66 @@
+name: Deploy to org on push to main
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "force-app/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: sffnoobs
+
+    steps:
+      # 1️⃣ Checkout source code
+      - name: Checkout source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2️⃣ Setup Node (required for plugins)
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      # 3️⃣ Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: npm install -g @salesforce/cli
+
+      # 4️⃣ Install SFDX Git Delta plugin
+      - name: Install sfdx-git-delta plugin
+        run: |
+          echo "y" | sf plugins install sfdx-git-delta
+          sf plugins
+
+      # 5️⃣ Generate Delta Package (only changed files)
+      - name: Create delta package
+        run: |
+          mkdir changed-sources
+          sf sgd source delta \
+            --to HEAD \
+            --from HEAD~1 \
+            --output changed-sources \
+            --generate-delta \
+            --source force-app
+          echo "[INFO] Delta Generated"
+
+      # 6️⃣ Authenticate using JWT
+      - name: Authenticate to Salesforce (JWT)
+        run: |
+          echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
+          sf org login jwt \
+            --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
+            --jwt-key-file server.key \
+            --client-id ${{ secrets.CONSUMER_KEY }} \
+            --instance-url ${{ vars.INSTANCE_URL }} \
+            --alias deployOrg \
+            --set-default
+
+      # 7️⃣ Deploy to Salesforce
+      - name: Deploy metadata
+        run: |
+          sf project deploy start \
+            --source-dir changed-sources/force-app \
+            --test-level RunLocalTests
