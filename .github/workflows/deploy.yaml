@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: sffnoobs
+    environment: CH_ORG
 
     steps:
       # 1️⃣ Checkout source code
