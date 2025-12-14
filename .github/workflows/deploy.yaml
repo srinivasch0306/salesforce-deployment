@@ -1,72 +1,40 @@
-name: Deploy to org on push to main
+name: Deploy to sffnoobs environment on push to main
 
 on:
   push:
     branches: [ main ]
     paths:
-      - "force-app/**"
+      - 'force-app/**'
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment: CH_ORG
+  Deploy-to-CH_ORG-environment:
+      runs-on: ubuntu-latest
+      environment: CH_ORG
+      steps:
+          - uses: actions/setup-node@v3
+            with:
+              node-version: '18'
+          - name: 'Checkout source code'
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: '2'
+                
+          # Now Install Salesforce CLI
+          - name: 'Install sfdx'
+            run: npm install @salesforce/cli --global
+          - name: 'Installing sfdx git delta'
+            run: | 
+                echo Y | sfdx plugins:install sfdx-git-delta
+                sfdx plugins
 
-    steps:
-      # 1️⃣ Checkout source code
-      - name: Checkout source
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      # 2️⃣ Setup Node (required for Salesforce CLI plugins)
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-
-      # 3️⃣ Install Salesforce CLI
-      - name: Install Salesforce CLI
-        run: npm install -g @salesforce/cli
-
-      # 4️⃣ Install SFDX Git Delta plugin
-      - name: Install sfdx-git-delta plugin
-        run: |
-          echo "y" | sf plugins install sfdx-git-delta
-          sf plugins
-
-      # 5️⃣ Generate Delta Package (only changed files)
-      - name: Create delta package
-        run: |
-          mkdir changed-sources
-          sf sgd source delta \
-            --to HEAD \
-            --from HEAD~1 \
-            --output changed-sources \
-            --generate-delta \
-            --source force-app
-          echo "[INFO] Delta Generated"
-
-      # 6️⃣ Authenticate using JWT (fixed with sed)
-      - name: Authenticate to Salesforce (JWT)
-        run: |
-          # Write private key from GitHub secrets
-          echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
-          
-          # Convert escaped GitHub \n into real new lines
-          sed -i 's/\\n/\n/g' server.key
-
-          # Authenticate using JWT
-          sf org login jwt \
-            --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
-            --jwt-key-file server.key \
-            --client-id ${{ secrets.CONSUMER_KEY }} \
-            --instance-url https://login.salesforce.com \
-            --alias deployOrg \
-            --set-default
-
-      # 7️⃣ Deploy to Salesforce
-      - name: Deploy metadata
-        run: |
-          sf project deploy start \
-            --source-dir changed-sources/force-app \
-            --test-level RunLocalTests
+          - name: 'Create delta packages'
+            run: | 
+                mkdir changed-sources
+                sf sgd source delta --to "HEAD" --from "HEAD~1" --output changed-sources/ --generate-delta --source force-app/
+                echo "[INFO] Diff generated"
+                
+          - name: 'Deploy to environment with running all local tests'
+            run: |
+                echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
+                sf org login jwt --username ${{ secrets.DEPLOYMENT_USER_NAME }} --jwt-key-file server.key --client-id ${{ secrets.CONSUMER_KEY }} --instance-url ${{ vars.INSTANCE_URL }} --set-default
+                sf project deploy start --source-dir changed-sources/force-app --test-level RunLocalTests
