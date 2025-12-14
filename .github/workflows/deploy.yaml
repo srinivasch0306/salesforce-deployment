@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Setup Node (required for plugins)
+      # 2️⃣ Setup Node (required for Salesforce CLI plugins)
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
@@ -46,10 +46,16 @@ jobs:
             --source force-app
           echo "[INFO] Delta Generated"
 
-      # 6️⃣ Authenticate using JWT
+      # 6️⃣ Authenticate using JWT (fixed with sed)
       - name: Authenticate to Salesforce (JWT)
         run: |
+          # Write private key from GitHub secrets
           echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
+          
+          # Convert escaped GitHub \n into real new lines
+          sed -i 's/\\n/\n/g' server.key
+
+          # Authenticate using JWT
           sf org login jwt \
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
             --jwt-key-file server.key \
