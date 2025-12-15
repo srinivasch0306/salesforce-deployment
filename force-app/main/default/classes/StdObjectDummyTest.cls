@@ -12,7 +12,7 @@ public class StdObjectDummyTest {
 
     @isTest
     static void testContactInsert() {
-        // Create Account first
+        // Create Account first uyg
         Account a = new Account(Name = 'Parent');
         insert a;
 
