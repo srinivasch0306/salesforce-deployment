@@ -1,10 +1,8 @@
-name: Deploy to sffnoobs environment on push to main
+name: Deploy to sffnoobs environment (Azure Controlled)
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - "force-app/**"
+  repository_dispatch:
+    types: [azure-ready-for-deploy]
 
 jobs:
   Deploy-to-CH_ORG-environment:
@@ -12,6 +10,14 @@ jobs:
     environment: CH_ORG
 
     steps:
+      # 🔹 Print Azure payload (DEBUG)
+      - name: Print Azure payload
+        run: |
+          echo "Ticket ID   : ${{ github.event.client_payload.ticketId }}"
+          echo "Title       : ${{ github.event.client_payload.title }}"
+          echo "State       : ${{ github.event.client_payload.state }}"
+          echo "Changed By  : ${{ github.event.client_payload.changedBy }}"
+
       # 1️⃣ Setup Node
       - uses: actions/setup-node@v3
         with:
@@ -22,6 +28,22 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+
+      # 🔐 Validate Azure ticket ID in commit
+      - name: Validate Azure ticket ID in commit
+        run: |
+          TICKET_ID="${{ github.event.client_payload.ticketId }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          echo "Latest commit message:"
+          echo "$COMMIT_MSG"
+
+          if [[ "$COMMIT_MSG" != *"$TICKET_ID"* ]]; then
+            echo "❌ Commit message does NOT contain Azure Ticket ID: $TICKET_ID"
+            exit 1
+          fi
+
+          echo "✅ Commit validation passed"
 
       # 3️⃣ Install Salesforce CLI
       - name: Install Salesforce CLI
@@ -51,7 +73,7 @@ jobs:
           echo "===== DELTA CONTENTS ====="
           ls -R changed-sources
 
-      # 7️⃣ Authenticate using JWT (with newline fix)
+      # 7️⃣ Authenticate using JWT
       - name: Authenticate to Salesforce (JWT)
         run: |
           echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
@@ -65,7 +87,7 @@ jobs:
             --alias deployOrg \
             --set-default
 
-      # 8️⃣ Deploy (auto-detect delta path)
+      # 8️⃣ Deploy metadata
       - name: Deploy metadata
         run: |
           if [ -d "changed-sources/force-app" ]; then
