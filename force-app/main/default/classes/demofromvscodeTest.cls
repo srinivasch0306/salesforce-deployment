@@ -4,7 +4,7 @@ public class demofromvscodeTest {
     static void testMethod1() {
         demofromvscode obj = new demofromvscode();
         // Call some method if exists  
-        // obj.someMethod();
+        // obj.someMthod();
         System.assert(true);
     }
 }
