@@ -4,7 +4,7 @@ public class demofromvscodeTest {
     static void testMethod1() {
         demofromvscode obj = new demofromvscode();
         // Call some method if edfsdsssfs xists  
-        // obj.sosascmeMthod()sasd;sd
+        // obj.sosascmeMthod()sasdfsd;sd
         System.assert(true);
     }
 }
